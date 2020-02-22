@@ -1,0 +1,295 @@
+<template>
+  <view class="contain">
+    <!-- 搜索框 -->
+    <view class="search">
+      <view>
+        <text class="iconfont icon-sousuo"></text>
+        <text>搜索</text>
+      </view>
+    </view>
+    <!-- 轮播图 -->
+    <swiper indicator-dots autoplay circular>
+      <swiper-item wx:for="{{bannerList}}" wx:key="goods_id">
+        <navigator url="{{item.navigator_url}}">
+          <image src="{{item.image_src}}" />
+        </navigator>
+      </swiper-item>
+    </swiper>
+    <!-- 分类列表 -->
+    <view class="category">
+      <view wx:for="{{categoryList}}" wx:key="image_src">
+        <navigator
+          url="{{item.navigator_url}}"
+          open-type="{{item.open_type==='switchTab'?'switchTab':'navigate'}}"
+        >
+          <image src="{{item.image_src}}" />
+        </navigator>
+      </view>
+    </view>
+    <!-- 楼层 -->
+    <block>
+      <view class="floor" wx:for="{{floorList}}" wx:key="id">
+        <view class="floor-title">
+          <image src="{{item.floor_title.image_src}}" />
+        </view>
+        <view class="floor-content">
+          <view class="left">
+            <navigator
+              url="{{item.product_list[0].navigator_url}}"
+              open-type="{{item.product_list[0].open_type}}"
+            >
+              <image src="{{item.product_list[0].image_src}}" />
+            </navigator>
+          </view>
+          <view class="right">
+            <!-- 使用wx:if控制第一张图片不渲染 -->
+            <view
+              wx:for="{{item.product_list}}"
+              wx:key="image_src"
+              wx:for-item="image"
+              wx:for-index="idx"
+              wx:if="{{idx!==0}}"
+              style="width: {{image.image_width}}rpx"
+            >
+              <navigator
+                url="{{image.navigator_url}}"
+                open-type="{{image.open_type}}"
+              >
+                <image
+                  src="{{image.image_src}}"
+                  style="width:{{image.image_width}}rpx"
+                />
+              </navigator>
+            </view>
+          </view>
+        </view>
+      </view>
+    </block>
+    <!-- 去顶部 -->
+    <!-- style="display:{{isHide?'none':'flex'}}" -->
+    <view class="go-top" @tap="goTop" animation="{{ani}}">
+      <text class="iconfont icon-jiantoushang"></text>
+      <text>顶部</text>
+    </view>
+  </view>
+</template>
+
+<script>
+import wepy from 'wepy'
+import fetch from '../utils/fetch'
+// 定义的分类列表数据
+const categoryList = [
+  {
+    image_src: 'http://157.122.54.189:9087/pyg/icon_index_nav_4@2x.png',
+    name: '分类',
+    navigator_url: '/pages/category',
+    open_type: 'switchTab'
+  },
+  {
+    image_src: 'http://157.122.54.189:9087/pyg/icon_index_nav_3@2x.png',
+    name: '秒杀拍',
+    navigator_url: '/pages/goods_list',
+    open_type: 'navigate'
+  },
+  {
+    image_src: 'http://157.122.54.189:9087/pyg/icon_index_nav_2@2x.png',
+    name: '超市购',
+    navigator_url: '/pages/goods_list',
+    open_type: 'navigate'
+  },
+  {
+    image_src: 'http://157.122.54.189:9087/pyg/icon_index_nav_1@2x.png',
+    name: '母婴品',
+    navigator_url: '/pages/goods_list',
+    open_type: 'navigate'
+  }
+]
+export default class Index extends wepy.page {
+  config = {
+    navigationBarTitleText: '品优购'
+  }
+  data = {
+    bannerList: [],
+    categoryList: [],
+    floorList: [],
+    isHide: true
+  }
+  methods = {
+    // 去顶部
+    goTop() {
+      wepy.pageScrollTo({
+        scrollTop: 0
+      })
+    }
+  }
+  onLoad() {
+    this.getBannerList()
+    this.getCategoryList()
+    this.getFloorList()
+  }
+  // 监听页面滚动
+  onPageScroll(top) {
+    if (top.scrollTop > 300) {
+      this.show()
+    } else {
+      this.hide()
+    }
+  }
+  // 获取轮播图数据
+  async getBannerList() {
+    const res = await fetch('home/swiperdata')
+    this.bannerList = res.data.message
+    this.$apply()
+  }
+  // 获取分类列表数据
+  async getCategoryList() {
+    const res = await fetch('home/catitems')
+    res.data.message = categoryList
+    this.categoryList = res.data.message
+    this.$apply()
+  }
+  // 获取楼层列表数据
+  async getFloorList() {
+    const res = await fetch('home/floordata')
+    this.floorList = res.data.message
+    this.floorList.forEach((v, index) => {
+      v.id = index
+    })
+    this.$apply()
+  }
+  // 淡入动画
+  show() {
+    const animation = wepy.createAnimation({
+      duration: 1000,
+      timingFunction: 'ease'
+    })
+    animation.opacity(1).step()
+    this.setData({
+      ani: animation.export()
+    })
+  }
+  // 淡出动画
+  hide() {
+    const animation = wepy.createAnimation({
+      duration: 1000,
+      timingFunction: 'ease'
+    })
+    animation.opacity(0).step()
+    this.setData({
+      ani: animation.export()
+    })
+  }
+}
+</script>
+<style lang="less">
+@import '../assets/font/icon-font.wxss';
+.contain {
+  padding-top: 100rpx;
+  .search {
+    position: fixed;
+    top: 0;
+    z-index: 9999;
+    width: 750rpx;
+    height: 100rpx;
+    box-sizing: border-box;
+    padding: 20rpx 16rpx;
+    background-color: #ff2d4a;
+    view {
+      height: 60rpx;
+      background-color: #fff;
+      border-radius: 10rpx;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text {
+        color: #bbb;
+      }
+      text:nth-child(2) {
+        margin-left: 16rpx;
+        font-size: 24rpx;
+      }
+    }
+  }
+  swiper {
+    width: 750rpx;
+    height: 340rpx;
+    image {
+      width: 750rpx;
+      height: 340rpx;
+      vertical-align: middle;
+    }
+  }
+  .category {
+    display: flex;
+    view {
+      flex: 1;
+      padding: 24rpx 0 29rpx 0;
+      text-align: center;
+      image {
+        width: 128rpx;
+        height: 128rpx;
+        vertical-align: middle;
+      }
+    }
+  }
+  .floor {
+    .floor-title {
+      padding-top: 30rpx;
+      background-color: #eee;
+      image {
+        width: 750rpx;
+        height: 59rpx;
+      }
+    }
+    .floor-content {
+      display: flex;
+      padding: 20rpx 16rpx;
+      .left {
+        margin-right: 10rpx;
+        height: 386rpx;
+        image {
+          width: 232rpx;
+          height: 386rpx;
+        }
+      }
+      .right {
+        display: flex;
+        flex-wrap: wrap;
+        align-content: flex-start;
+        view {
+          width: 233rpx;
+          height: 188rpx;
+          image {
+            width: 233rpx;
+            height: 188rpx;
+          }
+        }
+        view:nth-child(odd) {
+          margin-right: 10rpx;
+        }
+        view:nth-child(-n + 2) {
+          margin-bottom: 10rpx;
+        }
+      }
+    }
+  }
+  .go-top {
+    opacity: 0;
+    width: 100rpx;
+    height: 100rpx;
+    position: fixed;
+    bottom: 40rpx;
+    right: 16rpx;
+    background-color: rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    text:last-child {
+      font-size: 24rpx;
+      margin-top: -10rpx;
+    }
+  }
+}
+</style>
