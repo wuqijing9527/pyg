@@ -13,7 +13,7 @@
         <text>¥ {{ message.goods_price }}</text>
       </view>
       <view class="title">
-        <view>{{ message.goods_name }}</view>
+        <view class="goods-name">{{ message.goods_name }}</view>
         <view class="collect">
           <text class="iconfont icon-shoucang"></text>
           <text>收藏</text>
@@ -24,47 +24,45 @@
     <view class="param">
       <view><text>促销</text><text>满300减30</text></view>
       <view><text>已选</text><text>黑色/S/1件</text></view>
-      <view @tap='chooseAddress'>
-        <text>地址</text>
-        <text wx:if='{{address}}'>{{address}}</text>
+      <view @tap="chooseAddress">
+        <text class='address'>地址</text>
+        <text class='iconfont icon-jiantouyou right-arrow' wx:if='{{isShowArrow}}'></text>
+        <text wx:if="{{address}}">{{ address }}</text>
       </view>
     </view>
     <view class="detail">
-      <view class='change'>
-        <view @tap='change({{1}})' class="{{currentId===1?'current':''}}">图文详情</view>
-        <view @tap='change({{2}})' class="{{currentId===2?'current':''}}">规格参数</view>
+      <view class="change">
+        <view @tap="change({{1}})" class="{{currentId===1?'current':''}}">图文详情</view>
+        <view @tap="change({{2}})" class="{{currentId===2?'current':''}}">规格参数</view>
       </view>
       <view class="content">
-        <view class='left' hidden='{{currentId!==1}}'>
-          图文详情
+        <view class="left" hidden="{{currentId!==1}}">
+          <!-- 引入模板 -->
+          <import src="../../assets/wxParse/wxParse.wxml"/>
+          <!-- 这里data中article为bindName -->
+          <template is="wxParse" data="{{wxParseData:article.nodes}}"/>
         </view>
-        <view class='right' hidden='{{currentId!==2}}'>
-          <view class='item'>
-            <view>商品名称</view>
-            <view>复古装色运动外套男女情侣套装买一送一就是这么便宜</view>
-          </view>
-          <view class='item'>
-            <view>品牌</view>
-            <view>初羽</view>
-          </view>
-          <view class='item'>
-            <view>编号</view>
-            <view>8R1005</view>
-          </view>
-          <view class='item'>
-            <view>颜色</view>
-            <view>黑色/白色/灰色</view>
+        <view class="right" hidden="{{currentId!==2}}">
+          <view class="item" wx:for='{{message.attrs}}' wx:key='attr_name'>
+            <view>{{item.attr_name}}</view>
+            <view>{{item.attr_vals}}</view>
           </view>
         </view>
       </view>
     </view>
     <view class="bottom">
       <view class="left">
-        <view>联系客服</view>
-        <view>购物车</view>
+        <navigator>
+          <text class="iconfont icon-kefu"></text>
+          <text>联系客服</text>
+        </navigator>
+        <navigator url="/pages/cart" open-type="switchTab">
+          <text class="iconfont icon-gouwuche"></text>
+          <text>购物车</text>
+        </navigator>
       </view>
       <view class="right">
-        <view class="join-cart">加入购物车</view>
+        <view class="join-cart" @tap='addCart'>加入购物车</view>
         <view class="now-buy">立即购买</view>
       </view>
     </view>
@@ -74,6 +72,7 @@
 <script>
 import wepy from 'wepy'
 import fetch from '../../utils/fetch'
+import WxParse from '../../assets/wxParse/wxParse.js'
 export default class Main extends wepy.page {
   config = {
     navigationBarTitleText: '品优购'
@@ -82,19 +81,46 @@ export default class Main extends wepy.page {
     message: {},
     id: '',
     currentId: 2,
-    address: '请选择收货地址...'
+    address: '请选择收货地址...',
+    isShowArrow: true
   }
   // 事件处理函数写在methods里面
   methods = {
-    change (id) {
+    change(id) {
       this.currentId = id
     },
     // 选择地址
-    async chooseAddress () {
+    async chooseAddress() {
       const res = await wepy.chooseAddress()
       wepy.setStorageSync('address', res)
-      this.address = res.provinceName + res.cityName + res.countyName + res.detailInfo
+      this.address =
+        res.provinceName + res.cityName + res.countyName + res.detailInfo
+      this.isShowArrow = false
       this.$apply()
+    },
+    // 加入购物车
+    addCart() {
+      const {goods_id, goods_name, goods_price, goods_small_logo} = this.message
+      const cart = wepy.getStorageSync('cart') || []
+      const goods = cart.find(item => item.goods_id === goods_id)
+      if (!goods) {
+        cart.push({
+          goods_id,
+          goods_name,
+          goods_price,
+          goods_small_logo,
+          goods_num: 1,
+          checked: false
+        })
+      } else {
+        goods.goods_num++
+      }
+      wepy.showToast({
+        title: '添加购物车成功',
+        icon: 'success',
+        mask: true
+      })
+      wepy.setStorageSync('cart', cart)
     }
   }
 
@@ -104,22 +130,32 @@ export default class Main extends wepy.page {
     this.getAddress()
     this.$apply()
   }
+  wxParseImgLoad () {}
   // 获取商品数据
   async getDetail() {
     const res = await fetch(`goods/detail?goods_id=${this.id}`)
     this.message = res.data.message
+    // 图文详情 html代码转换成wxml
+    const article = this.message.goods_introduce
+    WxParse.wxParse('article', 'html', article, this)
     this.$apply()
   }
   // 获取地址
-  getAddress () {
+  getAddress() {
     const res = wepy.getStorageSync('address')
     if (!res) return
-    this.address = res.provinceName + res.cityName + res.countyName + res.detailInfo
+    this.address =
+      res.provinceName + res.cityName + res.countyName + res.detailInfo
+    this.isShowArrow = false
   }
 }
 </script>
 <style lang="less">
 @import '../../assets/font/icon-font.wxss';
+@import '../../assets/wxParse/wxParse.wxss';
+page {
+  padding-bottom: 100rpx;
+}
 .contain {
   swiper {
     width: 100%;
@@ -139,10 +175,16 @@ export default class Main extends wepy.page {
       margin: 30rpx 0;
       display: flex;
       font-size: 36rpx;
+      justify-items: center;
+      .goods-name {
+        flex: 1;
+        padding-right: 10rpx;
+        box-sizing: border-box;
+      }
       .collect {
-        margin-left: 10rpx;
         border-left: 1px solid #ccc;
-        width: 200rpx;
+        box-sizing: border-box;
+        width: 120rpx;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -162,6 +204,7 @@ export default class Main extends wepy.page {
       color: #aaa;
       font-size: 32rpx;
       display: flex;
+      position: relative;
       text {
         display: block;
       }
@@ -170,15 +213,25 @@ export default class Main extends wepy.page {
         color: #333;
         width: 80rpx;
       }
-      text:nth-child(2) {
+     text:last-child {
+        flex: 1;
         overflow: hidden;
         white-space: nowrap;
         text-overflow: ellipsis;
       }
     }
+    view:last-child{
+      padding-right: 20rpx;
+      .right-arrow {
+        position: absolute;
+        right:10rpx;
+        top: 50%;
+        transform: translateY(-50%);
+      }
+    }
   }
-   .detail {
-    margin: 30rpx 0 60rpx 0;
+  .detail {
+    margin: 30rpx 0 0 0;
     .change {
       font-size: 34rpx;
       display: flex;
@@ -188,7 +241,7 @@ export default class Main extends wepy.page {
         display: flex;
         justify-content: center;
         align-items: center;
-         border-bottom: 10rpx solid transparent;
+        border-bottom: 10rpx solid transparent;
       }
       view.current {
         border-bottom: 10rpx solid #ff2d4a;
@@ -196,6 +249,12 @@ export default class Main extends wepy.page {
     }
     .content {
       padding: 0 20rpx;
+      .left {
+        image {
+          width: 710rpx;
+          vertical-align: middle;
+        }
+      }
       .item {
         margin: 30rpx 0;
         display: flex;
@@ -206,6 +265,7 @@ export default class Main extends wepy.page {
         }
         view:last-child {
           flex: 1;
+          padding-left: 20rpx;
         }
       }
     }
@@ -217,13 +277,16 @@ export default class Main extends wepy.page {
     display: flex;
     .left {
       width: 300rpx;
+      background-color: #fff;
       display: flex;
-      font-size: 34rpx;
-      view {
+      font-size: 32rpx;
+      navigator {
+        padding-top: 20rpx;
         flex: 1;
         display: flex;
         justify-content: center;
-        align-items: flex-end;
+        align-items: center;
+        flex-direction: column;
       }
     }
     .right {
@@ -246,6 +309,5 @@ export default class Main extends wepy.page {
       }
     }
   }
-
 }
 </style>

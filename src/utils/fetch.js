@@ -1,5 +1,5 @@
 import wepy from 'wepy'
-const BASE_URL = 'https://api.zbztb.cn/api/public/v1/'
+const BASE_URL = 'http://api-hmugo-web.itheima.net/api/public/v1/'
 export default function fetch (url, options = {}) {
   if (typeof url === 'string') {
     options.url = url
